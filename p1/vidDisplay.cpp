@@ -17,14 +17,12 @@
 static const char* WIN_VIDEO = "Video";
 static const char* WIN_CTRL  = "Controls";
 
-// Trackbars
 static int tbBrightness = 255; // [0..510] -> [-255..+255]
 static int tbContrast   = 100; // [0..300] -> [0.20..3.00]
 static int tbLevels     = 10;  // [1..30]
 static int tbDA2Scale   = 45;  // [20..100] -> [0.20..1.00]
 static int tbDA2Hz      = 10;  // [1..30]
 
-// Toggles / mode
 static std::atomic<bool> faceOn{false};
 static std::atomic<bool> depthOn{false};
 static std::atomic<bool> embossOn{false};
@@ -32,7 +30,6 @@ static std::atomic<bool> negativeOn{false};
 static std::atomic<char> mode{'c'}; // c g h p b x y m l
 static int saveCount = 0;
 
-// Shared frame -> depth thread
 static std::mutex mtxFrame;
 static std::condition_variable cvFrame;
 static cv::Mat sharedFrame;
@@ -46,14 +43,17 @@ struct DepthCache {
 static std::mutex mtxDepth;
 static DepthCache depthCache;
 
-// Slider helpers
 static inline int getBrightness() { return tbBrightness - 255; }
 static inline float getContrast() { return std::clamp(tbContrast / 100.0f, 0.20f, 3.00f); }
 static inline int getLevels() { return std::clamp(tbLevels, 1, 30); }
 static inline float getDA2ScaleMult() { return std::clamp(tbDA2Scale / 100.0f, 0.20f, 1.00f); }
 static inline int getDA2Hz() { return std::clamp(tbDA2Hz, 1, 30); }
 
-// Runs the same timing as timeBlur.cpp, but triggered from the video app with 'v'.
+/*
+ * Benchmarks blur5x5_1 vs blur5x5_2 on a fixed image to keep results comparable.
+ * Prints average time per run and writes sample outputs for your report.
+ * Triggered from the live app with key 'v' so you can test without a separate binary.
+ */
 static void runTimeBlurOnCathedral() {
     const char *filename = "cathedral.jpeg";
     cv::Mat src = cv::imread(filename);
@@ -81,7 +81,6 @@ static void runTimeBlurOnCathedral() {
     end = getTime();
     std::printf("[v] Time per image (2): %.4lf seconds\n", (end - start) / Ntimes);
 
-    // Save example outputs (one pass each) so you can include results in your report.
     cv::Mat out1, out2;
     blur5x5_1(src, out1);
     blur5x5_2(src, out2);
@@ -90,9 +89,6 @@ static void runTimeBlurOnCathedral() {
     std::printf("[v] Wrote cathedral_blur5x5_1.png and cathedral_blur5x5_2.png\n");
 }
 
-// ---------------------------
-// Clickable buttons panel (buttons only; no extra text)
-// ---------------------------
 struct Button {
     std::string label;
     cv::Rect rect;
@@ -100,6 +96,11 @@ struct Button {
 };
 static std::vector<Button> buttons;
 
+/*
+ * Rebuilds the clickable button rectangles whenever the control panel width changes.
+ * Stores each button's label, screen rect, and the atomic toggle it controls.
+ * Keeps the UI layout simple and consistent regardless of window size.
+ */
 static void rebuildButtons(int w) {
     buttons.clear();
     const int pad = 12;
@@ -118,6 +119,11 @@ static void rebuildButtons(int w) {
     addBtn("Negative (n)", &negativeOn);
 }
 
+/*
+ * Draws a compact controls UI (buttons only) into the provided panel image.
+ * Colors indicate ON/OFF state so you can see active toggles at a glance.
+ * Called each frame to keep the panel responsive to mouse and key toggles.
+ */
 static void drawControlsPanel(cv::Mat& panel) {
     panel.setTo(cv::Scalar(30, 30, 30));
     for (const auto& b : buttons) {
@@ -132,6 +138,11 @@ static void drawControlsPanel(cv::Mat& panel) {
     }
 }
 
+/*
+ * Handles mouse clicks on the controls window and toggles the matching feature.
+ * Uses hit-testing against button rectangles so clicks behave like real buttons.
+ * When enabling depth, resets DA2 calibration so the output stabilizes quickly.
+ */
 static void onMouseControls(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN) return;
     const cv::Point p(x, y);
@@ -145,9 +156,11 @@ static void onMouseControls(int event, int x, int y, int, void*) {
     }
 }
 
-// ---------------------------
-// HUD overlay (2 lines, auto-fit)
-// ---------------------------
+/*
+ * Renders a 2-line HUD with current mode, toggles, sliders, and performance stats.
+ * Auto-shrinks font if the text would overflow the video window width.
+ * Keeps the app usable while tuning settings in real time.
+ */
 static void drawHUD(cv::Mat& img, float fps, float depthFps) {
     const int br = getBrightness();
     const float ct = getContrast();
@@ -208,9 +221,11 @@ static void drawHUD(cv::Mat& img, float fps, float depthFps) {
                 cv::FONT_HERSHEY_SIMPLEX, fontScale, cv::Scalar(0, 255, 255), thickness);
 }
 
-// ---------------------------
-// Depth worker thread
-// ---------------------------
+/*
+ * Background worker that runs Depth Anything v2 inference without blocking the UI.
+ * Waits for the latest shared frame, throttles by the requested Hz, and updates a cache.
+ * Publishes both the latest depth map and an estimated depth FPS for the HUD.
+ */
 static void depthThreadFunc(const std::string& modelPath) {
     if (!da2_init_once(modelPath)) {
         std::fprintf(stderr, "ERROR: DA2 init failed. Depth will be unavailable.\n");
@@ -261,6 +276,11 @@ static void depthThreadFunc(const std::string& modelPath) {
     }
 }
 
+/*
+ * Live video app: capture -> filter pipeline -> optional overlays -> display.
+ * Uses a second thread for depth inference and simple atomics for toggles/mode changes.
+ * Supports keyboard shortcuts for modes, saving frames, and on-demand blur benchmarking.
+ */
 int main(int argc, char** argv) {
     std::string modelPath = "model_fp16.onnx";
     if (argc >= 2 && argv[1] && std::string(argv[1]).size() > 0) modelPath = argv[1];
@@ -303,7 +323,6 @@ int main(int argc, char** argv) {
         cap >> frame;
         if (frame.empty()) break;
 
-        // publish a frame for depth thread (thread will only run when depthOn is true)
         {
             std::lock_guard<std::mutex> lk(mtxFrame);
             frame.copyTo(sharedFrame);
@@ -311,7 +330,6 @@ int main(int argc, char** argv) {
         }
         cvFrame.notify_one();
 
-        // mode pipeline
         switch (mode.load()) {
             case 'g': {
                 cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
@@ -356,7 +374,6 @@ int main(int argc, char** argv) {
             out = negImg;
         }
 
-        // Depth cache (for thumbnail + per-face value + HUD)
         float depthFps = 0.0f;
         cv::Mat depthLocal;
         if (depthOn.load()) {
@@ -365,7 +382,6 @@ int main(int argc, char** argv) {
             depthFps = depthCache.depthFps;
         }
 
-        // depth thumbnail inside video frame
         if (depthOn.load() && !depthLocal.empty()) {
             cv::Mat depthVis;
             cv::applyColorMap(depthLocal, depthVis, cv::COLORMAP_INFERNO);
@@ -385,11 +401,9 @@ int main(int argc, char** argv) {
             }
         }
 
-        // brightness/contrast last
         applyBrightnessContrast(out, bcFrame, getContrast(), getBrightness());
         out = bcFrame;
 
-        // face boxes + depth value per face
         if (faceOn.load()) {
             faces.clear();
             cv::Mat faceGray;
@@ -400,8 +414,6 @@ int main(int argc, char** argv) {
                 cv::rectangle(out, rc, cv::Scalar(0, 255, 0), 2);
 
                 if (depthOn.load() && !depthLocal.empty()) {
-                    // DA2 depth output is computed on a downsampled frame in da2_depth_gray:
-                    // reduction = 0.5, output size == (frame.cols*0.5, frame.rows*0.5).
                     const float reduction = 0.5f;
                     cv::Rect rcSmall((int)std::lround(rc.x * reduction),
                                      (int)std::lround(rc.y * reduction),
@@ -422,7 +434,6 @@ int main(int argc, char** argv) {
             }
         }
 
-        // fps
         frameCount++;
         auto t1 = std::chrono::steady_clock::now();
         float dt = std::chrono::duration<float>(t1 - t0).count();
