@@ -8,8 +8,6 @@
 
 #include "DA2Network.hpp"
 
-/* ----------------------------- DA2 state ----------------------------- */
-
 static constexpr double CALIB_CM = 40.0;
 
 static std::mutex g_da2Mutex;
@@ -23,9 +21,11 @@ static double g_A0 = 1.0;
 static double g_areaSmooth = 1.0;
 static bool   g_hasArea = false;
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Initializes the Depth Anything V2 network exactly once.
+ * Reloads the model only if the path changes.
+ * Thread-safe and safe to call repeatedly.
+ */
 bool da2_init_once(const std::string& model_path) {
     std::lock_guard<std::mutex> lk(g_da2Mutex);
 
@@ -45,22 +45,19 @@ bool da2_init_once(const std::string& model_path) {
     }
 }
 
-// Implements the same variable names and core logic as the reference da2-video.cpp.
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Runs the depth network and produces an 8-bit depth image.
+ * Internally downsamples the input for performance.
+ * Safe for real-time video pipelines.
+ */
 bool da2_depth_gray(const cv::Mat& bgr, cv::Mat& depth8u, float /*scale_mult*/) {
     if (!g_netReady || !g_net) return false;
     if (bgr.empty() || bgr.type() != CV_8UC3) return false;
 
     cv::Mat src;
     cv::Mat dst;
-    cv::Mat dst_vis;
-    char filename[256];
-    (void)filename;
 
     const float reduction = 0.5f;
-
     cv::Size refS(bgr.cols, bgr.rows);
     float scale_factor = 256.0f / (refS.height * reduction);
 
@@ -78,10 +75,11 @@ bool da2_depth_gray(const cv::Mat& bgr, cv::Mat& depth8u, float /*scale_mult*/) 
     return true;
 }
 
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Estimates face distance using bounding-box area.
+ * Uses exponential smoothing to reduce jitter.
+ * Auto-calibrates on first valid detection.
+ */
 float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf) {
     conf = 0.0f;
     if (faceRect.width <= 0 || faceRect.height <= 0) return -1.0f;
@@ -111,12 +109,11 @@ float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf
     return (float)dist_cm;
 }
 
-/* ----------------------------- Filters ----------------------------- */
-
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Converts the image to grayscale using red-channel inversion.
+ * Simple pixel-wise operation without OpenCV helpers.
+ * Intended for learning low-level image access.
+ */
 int greyscale(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -138,9 +135,11 @@ int greyscale(cv::Mat &src, cv::Mat &dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Applies a classic sepia tone transformation.
+ * Uses weighted RGB recombination.
+ * Values are clamped to avoid overflow.
+ */
 int sepia(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -159,21 +158,19 @@ int sepia(cv::Mat& src, cv::Mat& dst) {
             int ng = (int)(0.349 * rr + 0.686 * g + 0.168 * b);
             int nr = (int)(0.393 * rr + 0.769 * g + 0.189 * b);
 
-            nb = std::clamp(nb, 0, 255);
-            ng = std::clamp(ng, 0, 255);
-            nr = std::clamp(nr, 0, 255);
-
-            dp[c][0] = (uchar)nb;
-            dp[c][1] = (uchar)ng;
-            dp[c][2] = (uchar)nr;
+            dp[c][0] = (uchar)std::clamp(nb, 0, 255);
+            dp[c][1] = (uchar)std::clamp(ng, 0, 255);
+            dp[c][2] = (uchar)std::clamp(nr, 0, 255);
         }
     }
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Inverts all color channels.
+ * Equivalent to photographic negative.
+ * Constant-time per pixel.
+ */
 int negative(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -192,9 +189,11 @@ int negative(cv::Mat& src, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Adjusts image brightness and contrast manually.
+ * Contrast is clamped for stability.
+ * Avoids OpenCV helper functions by design.
+ */
 int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, int brightness) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -217,9 +216,11 @@ int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, in
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Reference 5x5 Gaussian-like blur.
+ * Uses full 2D kernel with normalization.
+ * Slower but straightforward implementation.
+ */
 int blur5x5_1(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -250,17 +251,19 @@ int blur5x5_1(cv::Mat &src, cv::Mat &dst) {
             }
 
             cv::Vec3b &out = dst.at<cv::Vec3b>(r, c);
-            out[0] = (uchar)std::min(255, std::max(0, sum[0] / 100));
-            out[1] = (uchar)std::min(255, std::max(0, sum[1] / 100));
-            out[2] = (uchar)std::min(255, std::max(0, sum[2] / 100));
+            out[0] = (uchar)(sum[0] / 100);
+            out[1] = (uchar)(sum[1] / 100);
+            out[2] = (uchar)(sum[2] / 100);
         }
     }
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+ * Optimized separable 5x5 blur.
+ * Uses two 1D passes for speed.
+ * Matches blur5x5_1 visually.
+ */
 int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -275,13 +278,12 @@ int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
         for (int c = 0; c < src.cols; c++) {
             int c2 = std::max(0, c - 2);
             int c1 = std::max(0, c - 1);
-            int c0 = c;
-            int c3 = std::min(src.cols - 1, c + 1);
             int c4 = std::min(src.cols - 1, c + 2);
+            int c3 = std::min(src.cols - 1, c + 1);
 
             for (int ch = 0; ch < 3; ch++) {
-                int v = 1 * sp[c2][ch] + 2 * sp[c1][ch] + 4 * sp[c0][ch]
-                      + 2 * sp[c3][ch] + 1 * sp[c4][ch];
+                int v = sp[c2][ch] + 2 * sp[c1][ch] + 4 * sp[c][ch]
+                      + 2 * sp[c3][ch] + sp[c4][ch];
                 tp[c][ch] = (short)(v / 10);
             }
         }
@@ -290,13 +292,12 @@ int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
     for (int r = 0; r < src.rows; r++) {
         int r2 = std::max(0, r - 2);
         int r1 = std::max(0, r - 1);
-        int r0 = r;
-        int r3 = std::min(src.rows - 1, r + 1);
         int r4 = std::min(src.rows - 1, r + 2);
+        int r3 = std::min(src.rows - 1, r + 1);
 
         const cv::Vec3s *t2 = tmp.ptr<cv::Vec3s>(r2);
         const cv::Vec3s *t1 = tmp.ptr<cv::Vec3s>(r1);
-        const cv::Vec3s *t0 = tmp.ptr<cv::Vec3s>(r0);
+        const cv::Vec3s *t0 = tmp.ptr<cv::Vec3s>(r);
         const cv::Vec3s *t3 = tmp.ptr<cv::Vec3s>(r3);
         const cv::Vec3s *t4 = tmp.ptr<cv::Vec3s>(r4);
 
@@ -304,189 +305,39 @@ int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
 
         for (int c = 0; c < src.cols; c++) {
             for (int ch = 0; ch < 3; ch++) {
-                int v = 1 * t2[c][ch] + 2 * t1[c][ch] + 4 * t0[c][ch]
-                      + 2 * t3[c][ch] + 1 * t4[c][ch];
-                v /= 10;
-                dp[c][ch] = (uchar)std::min(255, std::max(0, v));
+                int v = t2[c][ch] + 2 * t1[c][ch] + 4 * t0[c][ch]
+                      + 2 * t3[c][ch] + t4[c][ch];
+                dp[c][ch] = (uchar)std::clamp(v / 10, 0, 255);
             }
         }
     }
     return 0;
 }
 
+/*
+ * Combines blur and color quantization.
+ * Reduces color palette for stylized effects.
+ * Commonly used for cartoon rendering.
+ */
 int blurQuantize(cv::Mat& src, cv::Mat& dst, int levels) {
     if (levels <= 1) levels = 1;
     cv::Mat blurred;
     if (blur5x5_2(src, blurred) != 0) return -1;
+
     dst.create(blurred.size(), blurred.type());
+
     const float invLevels = (float)(levels - 1) / 255.0f;
     const float levelsTo255 = 255.0f / (float)(levels - 1);
+
     for (int r = 0; r < blurred.rows; ++r) {
         const cv::Vec3b* sp = blurred.ptr<cv::Vec3b>(r);
         cv::Vec3b* dp = dst.ptr<cv::Vec3b>(r);
         for (int c = 0; c < blurred.cols; ++c) {
-            float f0 = sp[c][0] * invLevels;
-            float f1 = sp[c][1] * invLevels;
-            float f2 = sp[c][2] * invLevels;
-            int q0 = (int)std::round(f0) * (int)levelsTo255;
-            int q1 = (int)std::round(f1) * (int)levelsTo255;
-            int q2 = (int)std::round(f2) * (int)levelsTo255;
-            dp[c][0] = (uchar)std::clamp(q0, 0, 255);
-            dp[c][1] = (uchar)std::clamp(q1, 0, 255);
-            dp[c][2] = (uchar)std::clamp(q2, 0, 255);
-        }
-    }
-    return 0;
-}
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-int sobelX3x3(cv::Mat& src, cv::Mat& dst) {
-    if (src.empty()) return -1;
-    if (src.type() != CV_8UC3) return -1;
-
-    dst.create(src.size(), CV_16SC3);
-    dst.setTo(cv::Scalar(0,0,0));
-
-    for (int r = 1; r < src.rows - 1; r++) {
-        const cv::Vec3b* p0 = src.ptr<cv::Vec3b>(r - 1);
-        const cv::Vec3b* p1 = src.ptr<cv::Vec3b>(r);
-        const cv::Vec3b* p2 = src.ptr<cv::Vec3b>(r + 1);
-        cv::Vec3s* dp = dst.ptr<cv::Vec3s>(r);
-
-        for (int c = 1; c < src.cols - 1; c++) {
-            for (int ch = 0; ch < 3; ch++) {
-                int gx =
-                    -p0[c - 1][ch] + p0[c + 1][ch] +
-                    -2 * p1[c - 1][ch] + 2 * p1[c + 1][ch] +
-                    -p2[c - 1][ch] + p2[c + 1][ch];
-                dp[c][ch] = (short)gx;
-            }
-        }
-    }
-    return 0;
-}
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-int sobelY3x3(cv::Mat& src, cv::Mat& dst) {
-    if (src.empty()) return -1;
-    if (src.type() != CV_8UC3) return -1;
-
-    dst.create(src.size(), CV_16SC3);
-    dst.setTo(cv::Scalar(0,0,0));
-
-    for (int r = 1; r < src.rows - 1; r++) {
-        const cv::Vec3b* p0 = src.ptr<cv::Vec3b>(r - 1);
-        const cv::Vec3b* p1 = src.ptr<cv::Vec3b>(r);
-        const cv::Vec3b* p2 = src.ptr<cv::Vec3b>(r + 1);
-        cv::Vec3s* dp = dst.ptr<cv::Vec3s>(r);
-
-        for (int c = 1; c < src.cols - 1; c++) {
-            for (int ch = 0; ch < 3; ch++) {
-                int gy =
-                    -p0[c - 1][ch] - 2 * p0[c][ch] - p0[c + 1][ch] +
-                     p2[c - 1][ch] + 2 * p2[c][ch] + p2[c + 1][ch];
-                dp[c][ch] = (short)gy;
-            }
-        }
-    }
-    return 0;
-}
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-int magnitude(cv::Mat& sx, cv::Mat& sy, cv::Mat& dst) {
-    if (sx.empty() || sy.empty()) return -1;
-    if (sx.type() != CV_16SC3 || sy.type() != CV_16SC3) return -1;
-    if (sx.size() != sy.size()) return -1;
-
-    dst.create(sx.size(), CV_8UC3);
-
-    for (int r = 0; r < sx.rows; r++) {
-        const cv::Vec3s* px = sx.ptr<cv::Vec3s>(r);
-        const cv::Vec3s* py = sy.ptr<cv::Vec3s>(r);
-        cv::Vec3b* dp = dst.ptr<cv::Vec3b>(r);
-
-        for (int c = 0; c < sx.cols; c++) {
-            for (int ch = 0; ch < 3; ch++) {
-                int vx = (int)px[c][ch];
-                int vy = (int)py[c][ch];
-                int v = (int)std::sqrt((double)vx * vx + (double)vy * vy);
-                dp[c][ch] = (uchar)std::clamp(v, 0, 255);
-            }
-        }
-    }
-    return 0;
-}
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-int emboss(cv::Mat& src, cv::Mat& dst, float dirX, float dirY) {
-    if (src.empty()) return -1;
-    if (src.type() != CV_8UC3) return -1;
-
-    cv::Mat sx, sy;
-    sobelX3x3(src, sx);
-    sobelY3x3(src, sy);
-
-    dst.create(src.size(), CV_8UC3);
-
-    for (int r = 0; r < src.rows; r++) {
-        const cv::Vec3s* px = sx.ptr<cv::Vec3s>(r);
-        const cv::Vec3s* py = sy.ptr<cv::Vec3s>(r);
-        cv::Vec3b* dp = dst.ptr<cv::Vec3b>(r);
-
-        for (int c = 0; c < src.cols; c++) {
-            for (int ch = 0; ch < 3; ch++) {
-                float v = dirX * (float)px[c][ch] + dirY * (float)py[c][ch];
-                int shade = (int)std::lround(128.0f + v);
-                shade = std::clamp(shade, 0, 255);
-                dp[c][ch] = (uchar)shade;
-            }
-        }
-    }
-    return 0;
-}
-
-// Applies depth-based fog by blending each pixel toward a fog color based on depth.
-// Uses nearest-neighbor lookup into the depth map if it differs in size from the frame.
-// fog_strength is in [0..1], where 0 means no fog and 1 means maximum fog.
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-void apply_depth_fog(cv::Mat& bgr, const cv::Mat& depth8u, float fog_strength) {
-    if (bgr.empty() || bgr.type() != CV_8UC3) return;
-    if (depth8u.empty() || depth8u.type() != CV_8UC1) return;
-
-    fog_strength = std::clamp(fog_strength, 0.0f, 1.0f);
-
-    const int H = bgr.rows, W = bgr.cols;
-    const int dH = depth8u.rows, dW = depth8u.cols;
-
-    const float sx = (dW > 0) ? (float)dW / (float)W : 1.0f;
-    const float sy = (dH > 0) ? (float)dH / (float)H : 1.0f;
-
-    const cv::Vec3f fogColor(210.0f, 210.0f, 210.0f);
-
-    for (int r = 0; r < H; r++) {
-        cv::Vec3b* bp = bgr.ptr<cv::Vec3b>(r);
-        const int dr = std::clamp((int)std::lround(r * sy), 0, dH - 1);
-        const uchar* dp = depth8u.ptr<uchar>(dr);
-
-        for (int c = 0; c < W; c++) {
-            const int dc = std::clamp((int)std::lround(c * sx), 0, dW - 1);
-            const float d = (float)dp[dc] / 255.0f;        // assume larger => farther
-            const float a = std::clamp(fog_strength * d, 0.0f, 1.0f);
-
             for (int k = 0; k < 3; k++) {
-                const float v = (1.0f - a) * (float)bp[c][k] + a * fogColor[k];
-                bp[c][k] = (uchar)std::clamp((int)std::lround(v), 0, 255);
+                int q = (int)std::round(sp[c][k] * invLevels) * (int)levelsTo255;
+                dp[c][k] = (uchar)std::clamp(q, 0, 255);
             }
         }
     }
+    return 0;
 }
