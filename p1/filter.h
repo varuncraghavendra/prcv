@@ -2,30 +2,23 @@
 #include <opencv2/opencv.hpp>
 #include <string>
 
-/*
-  filter_rewrite.h
-  Declarations for all custom image filters used by vidDisplay.
-  Filters operate on BGR images (CV_8UC3) unless otherwise noted.
-  Depth Anything V2 helpers are exposed here so vidDisplay can call them.
-*/
-
-// Color / tone
+// Color / brightness
 int greyscale(cv::Mat &src, cv::Mat &dst);
 int sepia(cv::Mat &src, cv::Mat &dst);
 int negative(cv::Mat &src, cv::Mat &dst);
 int applyBrightnessContrast(const cv::Mat &src, cv::Mat &dst, float contrast, int brightness);
 
-// Blur + quantize
-int blur5x5_1(cv::Mat &src, cv::Mat &dst);   // reference (simple)
-int blur5x5_2(cv::Mat &src, cv::Mat &dst);   // faster separable version
+// Blur / quantize
+int blur5x5_1(cv::Mat &src, cv::Mat &dst);   
+int blur5x5_2(cv::Mat &src, cv::Mat &dst);   
 int blurQuantize(cv::Mat &src, cv::Mat &dst, int levels);
 
 // Gradients
-int sobelX3x3(cv::Mat &src, cv::Mat &dst);   // dst is CV_16SC3
-int sobelY3x3(cv::Mat &src, cv::Mat &dst);   // dst is CV_16SC3
-int magnitude(cv::Mat &sx, cv::Mat &sy, cv::Mat &dst); // dst is CV_8UC3
+int sobelX3x3(cv::Mat &src, cv::Mat &dst);   
+int sobelY3x3(cv::Mat &src, cv::Mat &dst);
+int magnitude(cv::Mat &sx, cv::Mat &sy, cv::Mat &dst); 
 
-// Stylized
+// Emboss using Sobel
 int emboss(cv::Mat &src, cv::Mat &dst, float dirX = 0.7071f, float dirY = 0.7071f);
 
 // Depth Anything V2 (ONNX Runtime) helper API
