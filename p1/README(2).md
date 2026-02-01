@@ -15,7 +15,7 @@ It is designed for interactive experimentation via keyboard controls and trackba
 - Frame saving to disk
 
 ### Image Filters
-Implemented **from scratch** (no OpenCV shortcuts unless noted):
+Implemented **from scratch**:
 
 - Grayscale
 - Sepia
@@ -45,7 +45,7 @@ Implemented **from scratch** (no OpenCV shortcuts unless noted):
 ├── vidDisplay.cpp      # Main application (camera loop, UI, threading)
 ├── filter.h            # Declarations for all filters + depth helpers
 ├── filter.cpp          # Filter implementations + DA2 integration
-├── faceDetect.h/.cpp   # Face detection helpers (Haar / DNN)
+├── faceDetect.h/.cpp   # Face detection helpers (Haar)
 ├── README.md
 ```
 
@@ -60,8 +60,7 @@ Implemented **from scratch** (no OpenCV shortcuts unless noted):
 | `g` | Grayscale |
 | `p` | Sepia |
 | `n` | Negative |
-| `b` | Blur (5×5 optimized) |
-| `l` | Blur + quantize |
+| `b` | Blur and Quantize (5×5 optimized) |
 | `x` | Sobel X |
 | `y` | Sobel Y |
 | `m` | Gradient magnitude |
@@ -90,7 +89,7 @@ Implemented **from scratch** (no OpenCV shortcuts unless noted):
   Used for Depth Anything V2 inference
 
 ### Optional
-- Webcam (USB / integrated)
+- Webcam 
 - Pretrained **Depth Anything V2 ONNX model**
 
 ---
@@ -140,17 +139,6 @@ Make sure:
 - **Performance-aware**: separable blur and pointer-based pixel access
 - **Numerical safety**: signed Sobel buffers (`CV_16SC3`) before magnitude
 - **No in-place corruption**: all filters preserve source image integrity
-
----
-
-## 📌 Educational Focus
-
-This project emphasizes:
-- Real-time image processing fundamentals
-- Manual convolution and optimization
-- Depth-from-single-image pipelines
-- Clean OpenCV + ONNX Runtime integration
-- UI-driven experimentation
 
 ---
 
