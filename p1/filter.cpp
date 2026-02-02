@@ -1,3 +1,11 @@
+/*
+  Varun Raghavendra
+  Spring 2026
+  CS 5330 Computer Vision
+*/
+
+
+
 #include "filter.h"
 
 #include <algorithm>
