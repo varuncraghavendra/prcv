@@ -1,3 +1,9 @@
+/*
+  Varun Raghavendra
+  Spring 2026
+  CS 5330 Computer Vision
+*/
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
