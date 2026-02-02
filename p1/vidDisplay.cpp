@@ -1,3 +1,13 @@
+/*
+  Varun Raghavendra
+  Spring 2026
+  CS 5330 Computer Vision
+
+  vidDisplay.cpp
+  Contains functions for video capture, display, HUD settings, control GUI, Thread Management 
+  Also this code links with filter.cpp to perform filtering functions on the press of keyboard buttons
+*/
+
 #include <opencv2/opencv.hpp>
 
 #include <algorithm>
