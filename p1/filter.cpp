@@ -22,7 +22,7 @@ static double g_areaSmooth = 1.0;
 static bool   g_hasArea = false;
 
 /*
- * Initializes the Depth Anything V2 network exactly once.
+ * Initializes the Depth Anything V2 network once.
  * Reloads the model only if the path changes.
  * Thread-safe and safe to call repeatedly.
  */
@@ -77,7 +77,7 @@ bool da2_depth_gray(const cv::Mat& bgr, cv::Mat& depth8u, float /*scale_mult*/) 
 
 /*
  * Estimates face distance using bounding-box area.
- * Uses exponential smoothing to reduce jitter.
+ * Uses smoothing to reduce jitter.
  * Auto-calibrates on first valid detection.
  */
 float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf) {
@@ -110,9 +110,8 @@ float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf
 }
 
 /*
- * Converts the image to grayscale using red-channel inversion.
- * Simple pixel-wise operation without OpenCV helpers.
- * Intended for learning low-level image access.
+ * Convert video to grayscale using red-channel inversion.
+ * Simple pixel-wise operation without the use of OpenCV functions
  */
 int greyscale(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
@@ -136,9 +135,9 @@ int greyscale(cv::Mat &src, cv::Mat &dst) {
 }
 
 /*
- * Applies a classic sepia tone transformation.
+ * Apply a sepia tone transformation to video feed.
  * Uses weighted RGB recombination.
- * Values are clamped to avoid overflow.
+ * Values are clamped between [0,255] to avoid overflow.
  */
 int sepia(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
@@ -167,8 +166,7 @@ int sepia(cv::Mat& src, cv::Mat& dst) {
 }
 
 /*
- * Inverts all color channels.
- * Equivalent to photographic negative.
+ * Image Negative - Inverts all color channels of a video feed.
  * Constant-time per pixel.
  */
 int negative(cv::Mat& src, cv::Mat& dst) {
@@ -190,9 +188,8 @@ int negative(cv::Mat& src, cv::Mat& dst) {
 }
 
 /*
- * Adjusts image brightness and contrast manually.
+ * Adjust video brightness and contrast manually.
  * Contrast is clamped for stability.
- * Avoids OpenCV helper functions by design.
  */
 int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, int brightness) {
     if (src.empty()) return -1;
@@ -217,7 +214,7 @@ int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, in
 }
 
 /*
- * Reference 5x5 Gaussian-like blur.
+ * Blur Filter.
  * Uses full 2D kernel with normalization.
  * Slower but straightforward implementation.
  */
@@ -260,9 +257,8 @@ int blur5x5_1(cv::Mat &src, cv::Mat &dst) {
 }
 
 /*
- * Optimized separable 5x5 blur.
+ * Time Optimized separable 5x5 blur.
  * Uses two 1D passes for speed.
- * Matches blur5x5_1 visually.
  */
 int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
@@ -315,7 +311,7 @@ int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
 }
 
 /*
- * Combines blur and color quantization.
+ * Combining blur and color quantization.
  * Reduces color palette for stylized effects.
  * Commonly used for cartoon rendering.
  */
