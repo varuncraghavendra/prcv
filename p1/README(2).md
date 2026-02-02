@@ -1,13 +1,15 @@
+Varun Raghavendra
 
-/*
-  Varun Raghavendra
-  Spring 2026
-  CS 5330 Computer Vision
+Spring 2026
 
-  Project 1 - README.md
-  Joined the class late, will submit subsequent assignments before deadline
-  Report contains more details about implementation
-*/
+CS 5330 Computer Vision
+
+Project 1 - README.md
+
+Joined the class late, will submit subsequent assignments before deadline
+
+Report contains more details about implementation
+
 
 
 # OpenCV Real-Time Video Filters with Depth Anything V2
