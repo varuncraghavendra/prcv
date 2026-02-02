@@ -142,7 +142,7 @@ g++ -std=c++17 -O2 \
 ```
 
 
-## 🙌 Acknowledgements
+## Acknowledgements
 
 - OpenCV
 - Microsoft ONNX Runtime
