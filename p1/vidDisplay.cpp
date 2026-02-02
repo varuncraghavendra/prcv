@@ -28,7 +28,7 @@ static std::atomic<bool> negativeOn{false};
 static std::atomic<char> mode{'c'}; // c g h p b x y m l
 static int saveCount = 0;
 
-// Shared frame -> depth thread
+// Shared frames for running independant DA2 thread
 static std::mutex mtxFrame;
 static std::condition_variable cvFrame;
 static cv::Mat sharedFrame;
@@ -43,26 +43,18 @@ static std::mutex mtxDepth;
 static DepthCache depthCache;
 
 // Slider helpers
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
 static inline int getBrightness() { return tbBrightness - 255; }
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
 static inline float getContrast() { return std::clamp(tbContrast / 100.0f, 0.20f, 3.00f); }
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
-// Runs the same timing as timeBlur.cpp, but triggered from the video app with 'v'.
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+
+/*
+Runs the blur timing test when 'v' is pressed.
+And generate blurred images
+*/
 static void runTimeBlurOnCathedral() {
     const char *filename = "cathedral.jpeg";
     cv::Mat src = cv::imread(filename);
     if (src.empty()) {
-        std::printf("[v] Could not read %s (make sure it's in your working directory)\n", filename);
+        std::printf("[v] Could not read %s\n", filename);
         return;
     }
 
@@ -85,18 +77,17 @@ static void runTimeBlurOnCathedral() {
     end = getTime();
     std::printf("[v] Time per image (2): %.4lf seconds\n", (end - start) / Ntimes);
 
-    // Save example outputs (one pass each) so you can include results in your report.
+    // Save example outputs (one pass each) so you can include results in  report.
     cv::Mat out1, out2;
     blur5x5_1(src, out1);
     blur5x5_2(src, out2);
     cv::imwrite("cathedral_blur5x5_1.png", out1);
     cv::imwrite("cathedral_blur5x5_2.png", out2);
-    std::printf("[v] Wrote cathedral_blur5x5_1.png and cathedral_blur5x5_2.png\n");
+    std::printf("[v] Saved cathedral_blur5x5_1.png and cathedral_blur5x5_2.png\n");
 }
 
-// ---------------------------
-// Clickable buttons panel (buttons only; no extra text)
-// ---------------------------
+
+// Clickable buttons panel 
 struct Button {
     std::string label;
     cv::Rect rect;
@@ -104,9 +95,9 @@ struct Button {
 };
 static std::vector<Button> buttons;
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Builds the clickable button bounded boxes for the control window for extra effects.
+*/
 static void rebuildButtons(int w) {
     buttons.clear();
     const int pad = 12;
@@ -125,9 +116,10 @@ static void rebuildButtons(int w) {
     addBtn("Negative (n)", &negativeOn);
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Toggle activation, Green means filter active, gray means filter is off.
+This is purely UI drawing — it doesn’t change any processing logic.
+*/
 static void drawControlsPanel(cv::Mat& panel) {
     panel.setTo(cv::Scalar(30, 30, 30));
     for (const auto& b : buttons) {
@@ -142,9 +134,9 @@ static void drawControlsPanel(cv::Mat& panel) {
     }
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Handles mouse clicks on the control window and toggles the matching button.
+*/
 static void onMouseControls(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN) return;
     const cv::Point p(x, y);
@@ -157,12 +149,12 @@ static void onMouseControls(int event, int x, int y, int, void*) {
     }
 }
 
-// ---------------------------
 // HUD overlay (2 lines, auto-fit)
-// ---------------------------
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Draws a compact HUD so you can see modes, toggles, and FPS at a glance.
+Text scale auto-shrinks to avoid clipping on smaller windows.
+Keeps it to two lines so it stays readable during live video.
+*/
 static void drawHUD(cv::Mat& img, float fps, float depthFps) {
     const int br = getBrightness();
     const float ct = getContrast();
@@ -223,12 +215,14 @@ static void drawHUD(cv::Mat& img, float fps, float depthFps) {
                 cv::FONT_HERSHEY_SIMPLEX, fontScale, cv::Scalar(0, 255, 255), thickness);
 }
 
-// ---------------------------
-// Depth worker thread
-// ---------------------------
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+
+// Depth thread
+
+/*
+Runs Depth Anything V2 inference on a background thread so the UI stays responsive.
+It only computes depth when the toggle is on, and rate-limits to a fixed update frequency.
+Results are cached behind a mutex so the main thread can safely render a thumbnail and read values.
+*/
 static void depthThreadFunc(const std::string& modelPath) {
     if (!da2_init_once(modelPath)) {
         std::fprintf(stderr, "ERROR: DA2 init failed. Depth will be unavailable.\n");
@@ -279,9 +273,10 @@ static void depthThreadFunc(const std::string& modelPath) {
     }
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Main loop: grabs frames, runs the selected filter pipeline, and renders UI overlays.
+It also publishes frames to the depth thread and merges back cached depth results when enabled.
+*/
 int main(int argc, char** argv) {
     std::string modelPath = "model_fp16.onnx";
     if (argc >= 2 && argv[1] && std::string(argv[1]).size() > 0) modelPath = argv[1];
@@ -382,7 +377,7 @@ int main(int argc, char** argv) {
             depthFps = depthCache.depthFps;
         }
 
-// depth thumbnail inside video frame
+        // depth thumbnail inside video frame
         if (depthOn.load() && !depthLocal.empty()) {
             cv::Mat depthVis;
             cv::applyColorMap(depthLocal, depthVis, cv::COLORMAP_INFERNO);
@@ -402,7 +397,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        // brightness/contrast last
+        // brightness/contrast 
         applyBrightnessContrast(out, bcFrame, getContrast(), getBrightness());
         out = bcFrame;
 
