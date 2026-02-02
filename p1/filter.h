@@ -2,19 +2,16 @@
   Varun Raghavendra
   Spring 2026
   CS 5330 Computer Vision
-*/
-
-
-#pragma once
-#include <opencv2/opencv.hpp>
-#include <string>
-
-/*
+  
   filter.h
   Declarations for all custom image filters used by vidDisplay.
   Filters operate on BGR images (CV_8UC3) unless otherwise noted.
   Depth Anything V2 helpers are exposed here so vidDisplay can call them.
 */
+
+#pragma once
+#include <opencv2/opencv.hpp>
+#include <string>
 
 // Color / tone
 int greyscale(cv::Mat &src, cv::Mat &dst);
@@ -42,3 +39,4 @@ float da2_face_distance_cm(const cv::Mat& depth8u, const cv::Rect& face, float& 
 
 // Depth-based effect
 void  apply_depth_fog(cv::Mat& bgr, const cv::Mat& depth8u, float fog_strength);
+
