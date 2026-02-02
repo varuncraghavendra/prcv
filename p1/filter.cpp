@@ -8,8 +8,6 @@
 
 #include "DA2Network.hpp"
 
-/* ----------------------------- DA2 state ----------------------------- */
-
 static constexpr double CALIB_CM = 40.0;
 
 static std::mutex g_da2Mutex;
@@ -23,9 +21,11 @@ static double g_A0 = 1.0;
 static double g_areaSmooth = 1.0;
 static bool   g_hasArea = false;
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Loads the Depth Anything V2 network once and keeps it around across calls.
+The mutex makes initialization and model swapping safe if multiple threads touch it.
+If the load fails, the state is reset so callers can cleanly fall back.
+*/
 bool da2_init_once(const std::string& model_path) {
     std::lock_guard<std::mutex> lk(g_da2Mutex);
 
@@ -45,10 +45,9 @@ bool da2_init_once(const std::string& model_path) {
     }
 }
 
-// Implements the same variable names and core logic as the reference da2-video.cpp.
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Forward pass and returns a downsamples 8-bit depth image.
+*/
 bool da2_depth_gray(const cv::Mat& bgr, cv::Mat& depth8u, float /*scale_mult*/) {
     if (!g_netReady || !g_net) return false;
     if (bgr.empty() || bgr.type() != CV_8UC3) return false;
@@ -78,10 +77,10 @@ bool da2_depth_gray(const cv::Mat& bgr, cv::Mat& depth8u, float /*scale_mult*/) 
     return true;
 }
 
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Estimates face distance using the area of the detected face box
+It auto-calibrates once from the first stable face size
+*/
 float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf) {
     conf = 0.0f;
     if (faceRect.width <= 0 || faceRect.height <= 0) return -1.0f;
@@ -111,12 +110,10 @@ float da2_face_distance_cm(const cv::Mat&, const cv::Rect& faceRect, float& conf
     return (float)dist_cm;
 }
 
-/* ----------------------------- Filters ----------------------------- */
-
-
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Alternate Greyscale Filter
+This implementation uses only the red channel and inverts it, and copies to all the other color channels
+*/
 int greyscale(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -138,9 +135,9 @@ int greyscale(cv::Mat &src, cv::Mat &dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Sepia tone using a fixed linear transform on BGR channels.
+*/
 int sepia(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -171,9 +168,9 @@ int sepia(cv::Mat& src, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Simple negative filter: invert each channel independently.
+*/
 int negative(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -192,9 +189,9 @@ int negative(cv::Mat& src, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Applies contrast (scale) and brightness (offset) with explicit clamping per channel, can be changed using slider
+*/
 int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, int brightness) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -217,9 +214,9 @@ int applyBrightnessContrast(const cv::Mat& src, cv::Mat& dst, float contrast, in
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Baseline 5x5 blur using the full 2D kernel
+*/
 int blur5x5_1(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -258,9 +255,11 @@ int blur5x5_1(cv::Mat &src, cv::Mat &dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Faster 5x5 blur using separable 1x5 passes
+First pass writes into a 16-bit temp image, second pass finishes and converts to 8-bit.
+Edges are handled by clamping indices, so borders still get valid non-zero values.
+*/
 int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -314,6 +313,9 @@ int blur5x5_2(cv::Mat &src, cv::Mat &dst) {
     return 0;
 }
 
+/*
+Quantization maps each channel into `levels` buckets, then rescales back to 0..255.
+*/
 int blurQuantize(cv::Mat& src, cv::Mat& dst, int levels) {
     if (levels <= 1) levels = 1;
     cv::Mat blurred;
@@ -339,9 +341,10 @@ int blurQuantize(cv::Mat& src, cv::Mat& dst, int levels) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Computes Sobel X gradients per channel and stores them in 16-bit signed output.
+The result is meant to be post-processed (abs / magnitude) by the caller.
+*/
 int sobelX3x3(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -368,9 +371,11 @@ int sobelX3x3(cv::Mat& src, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Computes Sobel Y gradients per channel and store in 16-bit signed output.
+Uses the standard 3x3 Sobel kernel and keeps the border as zeros.
+Pairs with sobelX3x3 for edge magnitude or directional effects.
+*/
 int sobelY3x3(cv::Mat& src, cv::Mat& dst) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -396,9 +401,10 @@ int sobelY3x3(cv::Mat& src, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Combines X and Y gradients into an 8-bit magnitude image per channel.
+Uses sqrt(vx^2 + vy^2) and clamps into [0,255]
+*/
 int magnitude(cv::Mat& sx, cv::Mat& sy, cv::Mat& dst) {
     if (sx.empty() || sy.empty()) return -1;
     if (sx.type() != CV_16SC3 || sy.type() != CV_16SC3) return -1;
@@ -423,9 +429,10 @@ int magnitude(cv::Mat& sx, cv::Mat& sy, cv::Mat& dst) {
     return 0;
 }
 
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Emboss effect built from Sobel gradients projected onto a chosen light direction.
+The 128 offset recenters gradients so flat regions become gray instead of black.
+*/
 int emboss(cv::Mat& src, cv::Mat& dst, float dirX, float dirY) {
     if (src.empty()) return -1;
     if (src.type() != CV_8UC3) return -1;
@@ -453,12 +460,10 @@ int emboss(cv::Mat& src, cv::Mat& dst, float dirX, float dirY) {
     return 0;
 }
 
-// Applies depth-based fog by blending each pixel toward a fog color based on depth.
-// Uses nearest-neighbor lookup into the depth map if it differs in size from the frame.
-// fog_strength is in [0..1], where 0 means no fog and 1 means maximum fog.
-/// What it does: (brief) core behavior of this function.
-/// Inputs/outputs: key parameters and what is produced/returned.
-/// Notes: important constraints, performance, or edge-case handling.
+/*
+Applies a depth-based “fog” by blending pixels toward a light gray fog color.
+Depth is sampled with a nearest-neighbor mapping if the depth map is smaller than the frame.
+*/
 void apply_depth_fog(cv::Mat& bgr, const cv::Mat& depth8u, float fog_strength) {
     if (bgr.empty() || bgr.type() != CV_8UC3) return;
     if (depth8u.empty() || depth8u.type() != CV_8UC1) return;
