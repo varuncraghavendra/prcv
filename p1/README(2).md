@@ -12,7 +12,7 @@ Report contains more details about implementation
 
 
 
-# OpenCV Real-Time Video Filters with Depth Anything V2
+# OpenCV Real-Time Video Filters
 
 This project is a **C++ / OpenCV4 real-time video processing application** that demonstrates classic image filters, optimized convolution, face detection, and **monocular depth estimation using Depth Anything V2 (ONNX Runtime)**.  
 It is designed for interactive experimentation via keyboard controls and trackbars.
