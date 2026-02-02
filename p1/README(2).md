@@ -1,3 +1,15 @@
+
+/*
+  Varun Raghavendra
+  Spring 2026
+  CS 5330 Computer Vision
+
+  Project 1 - README.md
+  Joined the class late, will submit subsequent assignments before deadline
+  Report contains more details about implementation
+*/
+
+
 # OpenCV Real-Time Video Filters with Depth Anything V2
 
 This project is a **C++ / OpenCV4 real-time video processing application** that demonstrates classic image filters, optimized convolution, face detection, and **monocular depth estimation using Depth Anything V2 (ONNX Runtime)**.  
@@ -5,7 +17,7 @@ It is designed for interactive experimentation via keyboard controls and trackba
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Video App
 - Live camera capture using OpenCV
@@ -38,7 +50,7 @@ Implemented **from scratch**:
 
 ---
 
-## 🧠 Project Structure
+## Project Structure
 
 ```
 .
@@ -51,7 +63,7 @@ Implemented **from scratch**:
 
 ---
 
-## ⌨️ Keyboard Controls
+## Keyboard Controls
 
 | Key | Action |
 |----:|-------|
@@ -73,14 +85,14 @@ Implemented **from scratch**:
 
 ---
 
-## 🎚️ Trackbars
+## Trackbars
 
 - **Brightness**: range `[-255, +255]`
 - **Contrast**: range `[0.20, 3.00]`
 
 ---
 
-## 🔧 Dependencies
+## Dependencies
 
 ### Required
 - **C++17**
@@ -94,7 +106,7 @@ Implemented **from scratch**:
 
 ---
 
-## 🏗️ Build Instructions
+## Build Instructions
 
 ### 1. Install OpenCV 4
 ```bash
@@ -121,33 +133,12 @@ g++ -std=c++17 -O2 \
 
 ---
 
-## ▶️ Running
+## Running
 
 ```bash
 ./vidDisplay
 ```
 
-Make sure:
-- The camera is accessible
-- The Depth Anything V2 model path is valid (loaded once at runtime)
-
----
-
-## ⚙️ Implementation Notes
-
-- **Threaded design**: depth inference runs independently from rendering
-- **Performance-aware**: separable blur and pointer-based pixel access
-- **Numerical safety**: signed Sobel buffers (`CV_16SC3`) before magnitude
-- **No in-place corruption**: all filters preserve source image integrity
-
----
-
-## 📜 License
-
-Educational / academic use.  
-Depth Anything V2 model license applies separately.
-
----
 
 ## 🙌 Acknowledgements
 
