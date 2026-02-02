@@ -36,8 +36,8 @@ Implemented **from scratch**:
 - Negative
 - Brightness / contrast adjustment
 - 5×5 Gaussian blur (two versions)
-  - `blur5x5_1`: reference implementation
-  - `blur5x5_2`: optimized separable filter
+  - `blur5x5_1`: Kernel Implementation
+  - `blur5x5_2`: Time optimized filter
 - Blur + quantization (posterization)
 - Sobel X / Y gradients (signed)
 - Gradient magnitude
@@ -48,7 +48,7 @@ Implemented **from scratch**:
 - Depth map generation (8‑bit visualization)
 - Separate depth thread for performance
 - Face-to-camera distance estimation (cm)
-- **Depth-based fog effect** (distance-aware atmospheric fade)
+- **Depth-based fog effect** 
 
 ---
 
