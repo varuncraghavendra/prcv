@@ -1,7 +1,6 @@
 # CBIR Project (CS 5330) by Varun Raghavendra 
 
 This project implements a small **content-based image retrieval (CBIR)** system with:
-- **`cbir_query`**: command-line search
 - **`cbir_gui`**: a single-window **OpenCV GUI** for interactive querying (pick target, pick dataset, choose task/metric, view Top‑K)
 
 ---
@@ -28,7 +27,7 @@ This produces:
 Image folder (e.g., `dataset/`) and (optional) embeddings CSV (e.g., `ResNet18_olym.csv`) must be in the project directory.
 
 ```
-./cbir_gui --topk 5 --emb_csv ./ResNet18_olym.csv
+./cbir_gui 
 ```
 
 ### GUI keys
@@ -48,21 +47,7 @@ sudo apt-get install -y zenity
 
 ---
 
-## 3) Run from the command line (CLI)
-
-### Example: Task 4 (color + texture)
-```
-./cbir_query --db ./dataset --target ./dataset/pic.0535.jpg --feature colortexture --metric colortexture --topk 3
-```
-
-### Example: Task 5/6 (embeddings + cosine distance)
-```
-./cbir_query --db ./dataset --target ./dataset/pic.0893.jpg --feature embedding_resnet18 --metric cosine --topk 3 --emb_csv ./ResNet18_olym.csv
-```
-
----
-
-## 4) Features & metrics supported
+## 3) Features & metrics supported
 
 **Features**
 - `center7x7`
