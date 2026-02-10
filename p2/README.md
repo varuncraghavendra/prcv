@@ -1,7 +1,6 @@
 # CBIR Project (CS 5330) by Varun Raghavendra 
 
-This project implements a small **content-based image retrieval (CBIR)** system with:
-- **`cbir_gui`**: a single-window **OpenCV GUI** for interactive querying (pick target, pick dataset, choose task/metric, view Top‑K)
+This project implements a small **content-based image retrieval (CBIR)** system with `cbir_gui`**: a single-window **OpenCV GUI** for interactive querying (pick target, pick dataset, choose task/metric, view Top‑K)
 
 ---
 
