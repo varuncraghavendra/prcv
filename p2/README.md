@@ -25,7 +25,7 @@ This produces:
 
 ## 2) Run the GUI (recommended)
 
-Place your image folder (e.g., `dataset/`) and (optional) embeddings CSV (e.g., `ResNet18_olym.csv`) in the project directory.
+Image folder (e.g., `dataset/`) and (optional) embeddings CSV (e.g., `ResNet18_olym.csv`) must be in the project directory.
 
 ```
 ./cbir_gui --topk 5 --emb_csv ./ResNet18_olym.csv
@@ -40,7 +40,7 @@ Place your image folder (e.g., `dataset/`) and (optional) embeddings CSV (e.g., 
 - `d` : select a **dataset directory** (uses `zenity` on Ubuntu)
 - `q` or `Esc` : quit
 
-If you want the file/directory picker keys (`t`, `d`) to work, install `zenity`:
+For the GUI to work, install `zenity`:
 
 ```
 sudo apt-get install -y zenity
