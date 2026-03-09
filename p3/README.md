@@ -1,4 +1,4 @@
-# 2D Object Recognition — Complete Assignment Implementation
+# 2D Object Recognition
 
 ## Folder structure
 
