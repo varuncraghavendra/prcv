@@ -1,6 +1,6 @@
 # Camera Calibration and Augmented Reality
 
-PRCV Spring 2026 — Project 3  
+PRCV Spring 2026 — Project 4  
 Varun Raghavendra
 
 ---
