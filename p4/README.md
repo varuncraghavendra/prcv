@@ -7,7 +7,7 @@ Varun Raghavendra
 
 ## Overview
 
-This project contains three C++ programs that together build a complete camera calibration and augmented reality pipeline using my laptop webcam and a 9x6 standard checkerboard printed on an A4 sheet.
+This project contains three C++ programs that together build a complete camera calibration and augmented reality pipeline validated using my laptop webcam and a 9x6 standard checkerboard printed on an A4 sheet.
 
 Key features of the project:
 
