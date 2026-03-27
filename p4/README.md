@@ -7,14 +7,14 @@ Varun Raghavendra
 
 ## Overview
 
-This project contains three small C++ programs that together build a complete camera calibration and augmented reality pipeline using a webcam and a checkerboard.
+This project contains three C++ programs that together build a complete camera calibration and augmented reality pipeline using my laptop webcam and a 9x6 standard checkerboard printed on an A4 sheet.
 
-The project lets you:
+Key features of the project:
 
-- detect checkerboard corners from a live camera feed
+- detect checkerboard corners from a live webcam feed
 - calibrate the camera and save its parameters
 - estimate the checkerboard pose in real time
-- place simple augmented reality graphics on the board
+- place simple augmented reality graphics on the board, in my case it is the stick figures of a boy and girl
 - detect Harris corner features with an adjustable threshold
 
 ---
@@ -22,19 +22,17 @@ The project lets you:
 ## Programs
 
 ### `calibrate_camera`
-Use this program to collect checkerboard views and calibrate the camera.
+This program is used to collect checkerboard views and calibrate the camera.
 
 ### `pose_and_augment`
-Use this program to estimate the checkerboard pose and draw AR overlays on top of it.
+This program is used to estimate the checkerboard pose and draw AR overlays on top of it.
 
 ### `detect_features`
-Use this program to detect Harris corners in a live video stream.
+This program is used to detect Harris corners in a live webcam stream.
 
 ---
 
-## Requirements
-
-Make sure you have:
+## System Requirements
 
 - CMake 3.10 or newer
 - OpenCV 4.2 or newer
@@ -42,7 +40,7 @@ Make sure you have:
 - a webcam
 - a printed **9 x 6 internal-corner checkerboard**
 
-This project uses only a checkerboard, so no ArUco setup is needed.
+For my project, I implemented everything in Ubuntu 22.04 OS
 
 ---
 
@@ -75,19 +73,11 @@ What to do:
 - Show the checkerboard clearly to the webcam
 - When the corners are detected, press `s` to save that view
 - Move the board to different angles and distances, then save more views
-- Try to collect at least 10 good frames
+- Try to collect at least 5 good frames, I collected in the range of 7 to 11 for least RMS reprojection error
 - Press `k` to run calibration
-- Press `w` to save the result as `calibration.yml`
-- Press `q` to quit
+- Press `w` to save the result as `calibration.yml`, rerun calibration if not accessible
+- Press `q` or `ESC` to quit
 
-#### Controls
-
-- `s` — save current checkerboard view
-- `k` — run calibration
-- `w` — write calibration file
-- `q` or `ESC` — quit
-
----
 
 ### 2. Run pose estimation and AR overlay
 
@@ -145,7 +135,7 @@ CameraCalibrationAR/
     └── detect_features.cpp
 ```
 
-The `calibration.yml` file is saved in the folder where you run `calibrate_camera`. Use that same file when running `pose_and_augment`.
+The `calibration.yml` file is saved in the folder where we run `calibrate_camera`. Use that same file when running `pose_and_augment`.
 
 ---
 
@@ -155,16 +145,6 @@ The `calibration.yml` file is saved in the folder where you run `calibrate_camer
 - Keep the full board visible when saving calibration images
 - Capture the board from different angles, not just straight in front
 - If calibration error is high, repeat the process with better and more varied views
-- If the AR drawing looks misaligned, make sure you are using the correct `calibration.yml`
+- If the AR drawing looks misaligned, make sure to use the correct `calibration.yml`
 
 ---
-
-## Summary
-
-This project demonstrates a full beginner-friendly AR pipeline in OpenCV:
-
-1. detect checkerboard corners
-2. calibrate the camera
-3. estimate board pose
-4. draw virtual objects on the board
-5. explore image features using Harris corner detection
