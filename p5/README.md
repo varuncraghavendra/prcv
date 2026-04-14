@@ -1,8 +1,6 @@
 # Project 5: Recognition using Deep Networks
-
-Author: Varun Raghavendra  
-Course: CS 5330 Computer Vision  
-Semester: Spring 2026  
+Varun Raghavendra  
+CS 5330 Computer Vision , Spring 2026  
 
 ---
 
