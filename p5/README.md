@@ -84,25 +84,4 @@ saved_models/
 These include model weights, performance plots, and experiment results.
 
 ---
-
-## 6. Key Concepts Covered
-
-- Convolutional Neural Networks (CNNs)  
-- Feature visualization and filter analysis  
-- Transfer learning  
-- Vision Transformers (ViT)  
-- Hyperparameter tuning and experimental design  
-
----
-
-## 7. Notes
-
-- Task 1 must be executed before all other tasks, as it generates the pretrained model required by subsequent tasks.  
-- The MNIST dataset will be automatically downloaded if not already present.  
-- The implementation is designed to run on CPU; GPU acceleration is optional.  
-
----
-
-## 8. Summary
-
-This project provides a comprehensive workflow for understanding deep learning-based recognition systems. It progresses from training a baseline CNN to analyzing learned features, adapting models to new tasks, experimenting with transformer architectures, and performing systematic model optimization.
+ 
